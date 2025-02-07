@@ -1,24 +1,32 @@
-### 쿼리 방식 선택 권장 순서
-1. 우선 엔티티를 DTO로 변환하는 방법을 선택
-2. 필요하면 FetchJoin()으로 성능을 최적화 => 대부분 성능 이슈 해결
-3. 그래도 안되면 DTO로 직접 조회하는 방법 선택
-4. 최후의 방법은 JPA가 제공하는 네이티브 SQL이나 스프링 JDBC Template를 사용해서 SQL을 직접 사용
+- https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html
 
-### 주의사항
-1. 1:N 관계에서 FetchJoin 시 페이징 처리할 때 DB 데이터를 전부 가져온 후 메모리에서 페이징 처리한다. 절대 사용 금지
-2. 1:N, N:M 관계에선 FetchJoin 금지
-   - 어떤 기준으로 데이터를 가져와야할지 내부적으로 정하지 못해 부정합 가능성 증가
-3. default_batch_fetch_size는 100~1000으로 설정하는 것이 바람직함
-   - 1000개 이상부터는 지원을 안하는 데이터베이스가 있음
+### 벌크 업데이트
+- 더티 체킹은 단일 업데이트이므로 다량의 업데이트 시에는 벌크 업데이트 사용
+- 벌크 업데이트는 영속성 컨텍스트 반영을 해주지 않기 때문에 사용 후 영속성 컨텍스트를 Clear 해줘야함
+  - 만약, 해주지 않았다면 이후 영속성 컨텍스트에 들어가 있는 객체의 값은 변경되지 않아, 이후 실행되는 로직에 데이터 정합성 문제 발생
+- @Modify(clearAutomatically = true) 로 설정해주면, 업데이트 후 자동으로 영속성을 비워 줌
+- 여담으로 JPQL 사용 시 영속성 컨텍스트에 반영되지 않으니 항상 유의하면서 사용
 
-### OSIV
-- Hibernate에서 Open Session In View 였지만, JPA는 Open EntityManager In View로 사용
-- 관례상 OSIV로 불림
-- 애플리케이션 값 설정 방법 
-  1. spring.jpa.open-in-view : true
-     - 이 설정으로 인해 영속성 컨텍스트가 세션이 끝날 때까지 살아있게 되므로 Controller에서 Mapping 할 때 Lazy 로딩이 가능해짐
-     - 단점은 DB 커넥션을 오랫동안 사용하기 때문에 장애로 발전할 수 있음
-     - ![Image](https://github.com/user-attachments/assets/236bfbdb-84e6-4af1-83b7-5ca6ec358190)
-  2. spring.jpa.open-in-view : false
-     - ![Image](https://github.com/user-attachments/assets/ab2f6d83-5ca0-42af-b8c5-c5eaa23a0ddc)
-- 즉, 고객 서비스는 트래픽 양이 많기에 OSIV를 끄고, 어드민 같이 트래픽이 적은 곳에선 OSIV를 켬
+### Entity Graph
+- JPARepository에서 JPQL 없이 Fetch Join을 하고 싶은 경우 사용
+- @EntityGraph(attributePaths = {"team"})
+
+### hint(readOnly)
+- Entity를 가져올 때 100% 조회용으로만 사용할 때 사용
+  - 만약, 조회용이 아니라면 영속성 컨텍스트에 원본과 복제된 엔티티 두개가 생성돼 더티 체킹도 되고 메모리 낭비도 발생하기 때문에 ReadOnly 선언을 해줌
+- @QueryHint(name = "org.hibernate.readOnly", value = "true")
+
+### Pageable
+- ![Image](https://github.com/user-attachments/assets/480798f3-a1eb-47a5-a93a-64a0c9b31e05)
+
+### save
+- JPARepository에 save 메서드는 아이디가 null 여부에 따라 persist나 merge를 사용함
+- 이로 인해 id가 자동으로 채번되는 것이 아니면, 인위적으로 아이디를 넣어줘야하는데 이때 merge를 사용하기에 문제 발생
+- 이럴 경우 Persistable을 상속받고 isNew()를 재정의
+  - createdDate로 새로운 객체 여부를 판단해도 좋음
+  ```Java
+  @Override
+  public boolean isNew() {
+    return createdDate == null;
+  }
+  ```

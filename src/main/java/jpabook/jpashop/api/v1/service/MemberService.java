@@ -1,7 +1,7 @@
 package jpabook.jpashop.api.v1.service;
 
 import jpabook.jpashop.api.v1.domain.Member;
-import jpabook.jpashop.api.v1.repository.MemberRepository;
+import jpabook.jpashop.api.v1.repository.MemberRepositoryImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,18 +14,18 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class MemberService {
 
-  private final MemberRepository memberRepository;
+  private final MemberRepositoryImpl memberRepositoryImpl;
 
   @Transactional
   public Long join(Member member) {
 
     validateDuplicateMember(member);
-    memberRepository.save(member);
+    memberRepositoryImpl.save(member);
     return member.getId();
   }
 
   private void validateDuplicateMember(Member member) {
-    Boolean isDuplicated = !memberRepository.findByName(member.getName()).isEmpty();
+    Boolean isDuplicated = !memberRepositoryImpl.findByName(member.getName()).isEmpty();
 
     if (Boolean.TRUE.equals(isDuplicated)) {
       throw new IllegalStateException("중복회원 입니다.");
@@ -34,7 +34,7 @@ public class MemberService {
 
   @Transactional
   public Long updateMember(Long memberId, String name) {
-    Member member = memberRepository.findById(memberId);
+    Member member = memberRepositoryImpl.findById(memberId);
 
     if (Objects.isNull(member)) {
       throw new IllegalStateException("회원이 없습니다.");
@@ -46,11 +46,11 @@ public class MemberService {
   }
 
   public List<Member> findMembers() {
-    return memberRepository.findAll();
+    return memberRepositoryImpl.findAll();
   }
 
   public Member findOne(Long id) {
-    return memberRepository.findById(id);
+    return memberRepositoryImpl.findById(id);
   }
 
 }
