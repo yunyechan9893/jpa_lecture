@@ -14,6 +14,7 @@ import java.util.Objects;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SequenceGenerator(name = "memberSeqGen", sequenceName = "member_seq")
+@ToString(of = {"id", "name", "address"})
 public class Member extends BaseEntity {
 
   @Id
@@ -25,17 +26,21 @@ public class Member extends BaseEntity {
   @Embedded
   private Address address;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "team_id", foreignKey = @ForeignKey(name = "member_team_fk"))
+  private Team team;
+
   @JsonIgnore
   @OneToMany(mappedBy = "member")
   List<Order> orders = new ArrayList<>();
 
   //==생성자 메서드==//
-  public Member (
+  public Member(
       String name,
       String city,
       String street,
       String zipcode
-      ) {
+  ) {
     this.name = name;
     this.address = new Address(city, street, zipcode);
   }

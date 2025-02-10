@@ -1,32 +1,32 @@
-- https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html
+## 정리
 
-### 벌크 업데이트
-- 더티 체킹은 단일 업데이트이므로 다량의 업데이트 시에는 벌크 업데이트 사용
-- 벌크 업데이트는 영속성 컨텍스트 반영을 해주지 않기 때문에 사용 후 영속성 컨텍스트를 Clear 해줘야함
-  - 만약, 해주지 않았다면 이후 영속성 컨텍스트에 들어가 있는 객체의 값은 변경되지 않아, 이후 실행되는 로직에 데이터 정합성 문제 발생
-- @Modify(clearAutomatically = true) 로 설정해주면, 업데이트 후 자동으로 영속성을 비워 줌
-- 여담으로 JPQL 사용 시 영속성 컨텍스트에 반영되지 않으니 항상 유의하면서 사용
+1. orderBy
 
-### Entity Graph
-- JPARepository에서 JPQL 없이 Fetch Join을 하고 싶은 경우 사용
-- @EntityGraph(attributePaths = {"team"})
+- nulls first : 정렬 시 null을 1순위로 분류
+    - member.name.desc().nullsFirst()
+- nulls last : 정렬 시 null을 마지막 순위로 분류
+    - member.name.desc().nullsLast()
 
-### hint(readOnly)
-- Entity를 가져올 때 100% 조회용으로만 사용할 때 사용
-  - 만약, 조회용이 아니라면 영속성 컨텍스트에 원본과 복제된 엔티티 두개가 생성돼 더티 체킹도 되고 메모리 낭비도 발생하기 때문에 ReadOnly 선언을 해줌
-- @QueryHint(name = "org.hibernate.readOnly", value = "true")
+2. fetchResults
+    - where절은 필터링하지 않고 그대로 카운트 적용. 무한스크롤에서 적용하기 어려울 듯
+3. 세타 조인
+    - 관계가 없는 컬럼끼리 조인할 때 사용
+    ```java
+   List<Member> members = jpaQueryFactory.select(member)
+        .from(member, team)
+        .where(member.name.eq(team.name))
+        .fetch();
+   ```
 
-### Pageable
-- ![Image](https://github.com/user-attachments/assets/480798f3-a1eb-47a5-a93a-64a0c9b31e05)
-
-### save
-- JPARepository에 save 메서드는 아이디가 null 여부에 따라 persist나 merge를 사용함
-- 이로 인해 id가 자동으로 채번되는 것이 아니면, 인위적으로 아이디를 넣어줘야하는데 이때 merge를 사용하기에 문제 발생
-- 이럴 경우 Persistable을 상속받고 isNew()를 재정의
-  - createdDate로 새로운 객체 여부를 판단해도 좋음
-  ```Java
-  @Override
-  public boolean isNew() {
-    return createdDate == null;
-  }
-  ```
+4. On절
+    - 내부 조인으로 사용 시 Where절과 동일함
+    - 외부 조인으로 활용
+5. from절 서브쿼리
+   - 하이버네이트에서 지원하지 않기에, QueryDSL에서도 당연히 지원하지 않음
+   - 해결 방법
+     - 서브쿼리를 Join으로 변경
+     - 애플리케이션에서 두번에 걸쳐 쿼리 요청
+     - native SQL을 사용
+6. stringValue()
+    - 결과 타입을 스트링으로 변환
+    - enum 처리할 때 많이 사용
